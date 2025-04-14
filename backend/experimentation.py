@@ -1,4 +1,11 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
+
+class Item(BaseModel): #this is a data model, with fields and their types (and optional-ness) defined.
+    name:str
+    desc:str|None=None
+    price:float
+    tax:float|None=None
 
 app = FastAPI()
 itemsDb = [{"itemName": "Skibidi"}, {"itemName":"Toilet"}, {"itemName":"Sigma"}]
@@ -28,3 +35,13 @@ async def getAnswer(answer:bool = False): #Boolean query params accept values tr
 @app.get("/answermeorelse")
 async def greeting(ans:str): #since no default value specified, this will throw an error if no value of ans is provided as a query param
     return "Good Morning."
+
+@app.post("/items/")
+async def createItem(item:Item): #add the Item class as the type of the parameter -> these are request body parameters
+    itemDict = item.dict()
+    if item.tax is not None:
+        praceWithTax = item.price + item.tax
+        itemDict.update({"priceWithTax":praceWithTax})
+    return itemDict
+
+#note: body, path and query parameters can be mix n matched and fastapi is awesome and can just figure out which is which :)
