@@ -1,6 +1,6 @@
 from fastapi import FastAPI, status, Query, Path, Body
-from pydantic import BaseModel, Field
-from typing import Annotated
+from pydantic import BaseModel, Field, EmailStr
+from typing import Annotated, Any
 
 class Item(BaseModel): #this is a data model, with fields and their types (and optional-ness) defined.
     name:str
@@ -11,6 +11,13 @@ class Item(BaseModel): #this is a data model, with fields and their types (and o
 class User(BaseModel):
     username:str
     fullName: str|None=None
+    email: EmailStr
+    password: str
+
+class UserOut(BaseModel): #define separate model for when a response contains a User object to prevent peoples passwords being unintentionally returned -> fastapi automatically filters out data that doesnt fit the response model
+    username:str
+    fullName: str|None=None
+    email: EmailStr
 
 app = FastAPI()
 itemsDb = [{"name": "itemOne", "price":7.0}, {"name":"itemTwo", "price":5.30}, {"name":"itemThree", "desc":"Very useful item", "price":2.50}]
@@ -60,3 +67,6 @@ async def update_item(
     return results
 #note: body, path and query parameters can be mix n matched and fastapi is awesome and can just figure out which is which :)
 
+@app.post("/user/", response_model=UserOut)
+async def createUser(user:User) ->Any:
+    return user #this returned user object does not contain the password field as it is defines as being of type UserOut which omits this field -> security :)
