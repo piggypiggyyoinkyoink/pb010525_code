@@ -8,6 +8,7 @@ from hashlib import sha3_256
 import jwt
 from jwt.exceptions import ExpiredSignatureError
 from cryptography.hazmat.primitives import serialization
+from datetime import timezone, timedelta, datetime
 
 private_key = open('.ssh/id_rsa', 'r').read()
 PRIVATE_KEY = serialization.load_ssh_private_key(private_key.encode(), password=b'')
@@ -37,8 +38,6 @@ fake_users_db = {
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     print("Hello")
-    global APPLES
-    APPLES = 7
     print(sha3_256(bytes("secret2", "utf-8")).hexdigest())
     yield
     print("Goodbye")
@@ -82,15 +81,10 @@ def get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
     
-def hgg(db, username:str):
-    if username in db:
-        user_dict = db[username]
-        return User(**user_dict)
     
 def decode_token(token):
     try:
         payload = jwt.decode(jwt=token, key=PUBLIC_KEY, algorithms=['RS256', ])
-        print(payload)
         return get_user(fake_users_db, payload["sub"])
     except ExpiredSignatureError:
         raise ExpiredSignatureError
@@ -107,6 +101,8 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
 
 
 @app.get("/", status_code=status.HTTP_200_OK)
@@ -126,7 +122,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     if not hashed_password == user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-    jwt_payload = {"sub": user.username}
+    jwt_payload = {"sub": user.username, "exp":datetime.now(tz=timezone.utc)+timedelta(hours=48)}
     
     token = jwt.encode(payload=jwt_payload, key=PRIVATE_KEY, algorithm="RS256")
     print(token)
