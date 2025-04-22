@@ -15,30 +15,39 @@ PRIVATE_KEY = serialization.load_ssh_private_key(private_key.encode(), password=
 public_key = open('.ssh/id_rsa.pub', 'r').read()
 PUBLIC_KEY = serialization.load_ssh_public_key(public_key.encode())
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3",
-        "disabled": False,
-    },
-    "alice": {
-        "username": "alice",
-        "first_name": "Alice",
-        "last_name": "Inwonderland",
-        "email": "alice@example.com",
-        "hashed_password": "74efee2654fbc20723cb7eb381e464be96319c23064a4ffce86a5de8470dd863",
-        "disabled": True,
-    },
-}
+
+
+users_db = {}
+
+def loadData():
+    global users_db
+    with open("users", "r") as f:
+        for line in f:
+            
+            tmp = line.split(",")
+            data = [x.strip() for x in tmp]
+            print(data)
+            users_db.update({
+                data[0]:{
+                    "username": data[0],
+                    "first_name": data[1],
+                    "last_name" : data[2],
+                    "email":data[3],
+                    "hashed_password":data[4],
+                    "disabled": data[5] == True
+
+                }
+            })
+            print(users_db)
+
+
 
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     print("Hello")
-    print(sha3_256(bytes("secret2", "utf-8")).hexdigest())
+    print(sha3_256(bytes("password", "utf-8")).hexdigest())
+    loadData()
     yield
     print("Goodbye")
 
@@ -85,7 +94,7 @@ def get_user(db, username: str):
 def decode_token(token):
     try:
         payload = jwt.decode(jwt=token, key=PUBLIC_KEY, algorithms=['RS256', ])
-        return get_user(fake_users_db, payload["sub"])
+        return get_user(users_db, payload["sub"])
     except ExpiredSignatureError:
         raise ExpiredSignatureError
 
@@ -113,7 +122,7 @@ async def root():
 
 @app.post("/token")
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user_dict = fake_users_db.get(form_data.username)
+    user_dict = users_db.get(form_data.username)
     print(user_dict)
     if not user_dict:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
