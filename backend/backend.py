@@ -92,6 +92,7 @@ def get_user(db, username: str):
     
     
 def decode_token(token):
+    print(token)
     try:
         payload = jwt.decode(jwt=token, key=PUBLIC_KEY, algorithms=['RS256', ])
         return get_user(users_db, payload["sub"])
